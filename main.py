@@ -2,11 +2,20 @@
 Модуль для управління адресною книгою
 """
 from collections import UserDict
+from datetime import datetime
 
 class Field:
     """Базовий клас для полів запису"""
     def __init__(self, value):
-        self.value = value
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
 
     def __str__(self):
         return str(self.value)
@@ -35,12 +44,27 @@ class Phone(Field):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.value == other.value
+    
+
+class Birthday(Field):
+    """Клас для зберігання дня народження"""
+    def __init__(self, value=None):
+        self.validate_birthday_format(value)
+        super().__init__(value)
+
+    def validate_birthday_format(self, value):
+        """Метод проводить валідацію дати"""
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("Birthday is not a date")
 
 class Record:
     """Клас для зберігання інформації про контакт, включаючи ім'я та список телефонів"""
-    def __init__(self, name):
+    def __init__(self, name, birthday=None):
         self.name = Name(name)
         self.phones = []
+        self.birthday = Birthday(birthday) if birthday else None
 
     def add_phone(self, phone_number):
         """Метод для додавання об'єктів"""
@@ -69,6 +93,20 @@ class Record:
                 return
 
         raise ValueError("Phone number to be edited was not found")
+    
+    def days_to_birthday(self):
+        """Метод для обчислення кількості днів до наступного дня народження"""
+        if not self.birthday:
+            return None
+
+        today = datetime.now()
+        next_birthday = datetime(today.year, self.birthday.value.month, self.birthday.value.day)
+
+        if next_birthday < today:
+            next_birthday = datetime(today.year + 1, self.birthday.value.month, self.birthday.value.day)
+
+        days_left = (next_birthday - today).days
+        return days_left
 
     def __str__(self):
         return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
@@ -91,3 +129,14 @@ class AddressBook(UserDict):
         """Метод видаляє запис за ім'ям"""
         if name in self.data:
             del self.data[name]
+
+    def __iter__(self, records_per_iteration=5):
+        """Метод повертає генератор за записами і за одну ітерацію повертає декілька записів"""
+        keys = list(self.data.keys())
+        records = 0
+        all_records = len(keys)
+        while records < all_records:
+            yield [self.data[keys[i]] for i in range(records, min(records + records_per_iteration, all_records))]
+            records += records_per_iteration
+
+
