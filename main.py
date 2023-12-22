@@ -3,6 +3,7 @@
 """
 from collections import UserDict
 from datetime import datetime
+import pickle
 
 class Field:
     """Базовий клас для полів запису"""
@@ -141,3 +142,38 @@ class AddressBook(UserDict):
         while records < all_records:
             yield [self.data[keys[i]] for i in range(records, min(records + records_per_iteration, all_records))]
             records += records_per_iteration
+
+    def write_to_file(self, filename):
+        """Метод зберігає адресну книгу у файл"""
+        with open(filename, "wb") as fh:
+            pickle.dump(contacts, fh)        
+
+
+    @classmethod
+    def read_contacts_from_file(cls, filename):
+        """Метод відновлює адресну книгу з файлу"""
+        with open(filename, 'rb') as file:
+            data = pickle.load(file)
+            address_book = cls()
+            address_book.data = data
+            return address_book
+
+
+    def __getstate__(self):
+        """Метод контролю серіалізації"""
+        state = self.__dict__.copy()
+        return state
+
+
+    def __setstate__(self, state):
+        """Метод контролю десеріалізації"""
+        self.__dict__.update(state)
+
+
+    def search_records(self, query):
+        """Метод проводить пошук записів за частковим збігом імені або номера телефону"""
+        found_records = []
+        for record in self.data.values():
+            if query in record.name.value or any(query in phone.value for phone in record.phones):
+                found_records.append(record)
+        return found_records
